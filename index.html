@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Digest</title>
+
+<!-- iOS home-screen app behaviour -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Daily Digest">
+<meta name="theme-color" content="#efe9da">
+<link rel="apple-touch-icon" href="icon.png">
+
+<!-- KaTeX for formula rendering -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#efe9da; --paper-card:#f8f4e8; --ink:#211c14; --ink-soft:#5a5142;
+    --muted:#8b8270; --line:#d8d0bc; --accent:#9a3b2e; --accent-soft:#c98a2e;
+    --star:#c98a2e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--paper);}
+  body{
+    font-family:'Newsreader',Georgia,serif; color:var(--ink);
+    font-size:18px; line-height:1.55;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:660px;margin:0 auto;padding:22px 20px 80px;}
+
+  /* ---- header ---- */
+  header{margin-bottom:18px;}
+  .kicker{
+    font-family:'Fraunces',serif; font-size:12px; letter-spacing:.22em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+  }
+  .masthead{
+    font-family:'Fraunces',serif; font-weight:600; font-size:40px;
+    line-height:1.04; letter-spacing:-.02em; margin:2px 0 4px;
+  }
+  .date-line{font-size:16px; color:var(--ink-soft); font-style:italic;}
+  .hr{height:2px;background:var(--ink);margin:14px 0 4px;}
+  .hr.thin{height:1px;background:var(--line);}
+
+  /* ---- nav ---- */
+  nav{display:flex;gap:6px;margin:16px 0 22px;}
+  nav button{
+    flex:1; font-family:'Fraunces',serif; font-size:13px; font-weight:500;
+    letter-spacing:.04em; padding:9px 4px; background:transparent;
+    border:1px solid var(--line); border-radius:2px; color:var(--ink-soft);
+    cursor:pointer; transition:.15s;
+  }
+  nav button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  /* ---- cards ---- */
+  .card{
+    background:var(--paper-card); border:1px solid var(--line);
+    border-radius:3px; padding:18px 18px 16px; margin-bottom:16px;
+    box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 18px -14px rgba(0,0,0,.5);
+    position:relative; animation:rise .4s ease both;
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+  .list-tag{
+    font-family:'Fraunces',serif; font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+  }
+  .star{
+    background:none;border:none;cursor:pointer;font-size:22px;line-height:1;
+    color:var(--line); padding:0 2px; transition:.15s;
+  }
+  .star.on{color:var(--star);transform:scale(1.05);}
+  .item-title{
+    font-family:'Fraunces',serif; font-weight:600; font-size:27px;
+    line-height:1.12; letter-spacing:-.01em; margin-bottom:3px;
+  }
+  .pron{font-style:italic;color:var(--muted);font-size:15px;margin-bottom:8px;}
+  .card-body{font-size:17.5px;}
+  .card-body p{margin:7px 0;}
+  .pos{
+    font-family:'Fraunces',serif;font-style:italic;color:var(--accent);
+    font-size:15px;font-weight:500;
+  }
+  .subhead{
+    font-family:'Fraunces',serif;font-weight:600;font-size:16px;
+    margin:12px 0 2px;
+  }
+  .formula{
+    margin:13px 0 4px;padding:11px 12px;background:#fff;border:1px solid var(--line);
+    border-radius:2px;overflow-x:auto;text-align:center;
+  }
+  .formula .katex{font-size:1.05em;}
+  .more-btn{
+    margin-top:12px;font-family:'Fraunces',serif;font-size:13px;font-weight:500;
+    letter-spacing:.03em;background:none;border:none;color:var(--accent);
+    cursor:pointer;padding:4px 0;border-bottom:1px solid var(--accent);
+  }
+  .more-body{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:16.5px;}
+  .more-body p{margin:6px 0;}
+  a.link{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--line);}
+  .loading{color:var(--muted);font-style:italic;}
+  .errline{color:var(--accent);font-size:15px;}
+  .retry{
+    margin-left:8px;font-family:'Fraunces',serif;font-size:13px;background:none;
+    border:1px solid var(--line);border-radius:2px;padding:2px 8px;cursor:pointer;color:var(--ink-soft);
+  }
+  .ex{font-style:italic;color:var(--ink-soft);}
+
+  /* ---- archive ---- */
+  .arch-row{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:13px 2px;border-bottom:1px solid var(--line);cursor:pointer;
+  }
+  .arch-date{font-family:'Fraunces',serif;font-weight:500;font-size:17px;}
+  .arch-meta{font-size:14px;color:var(--muted);}
+  .back-btn{
+    font-family:'Fraunces',serif;font-size:13px;background:none;border:none;
+    color:var(--accent);cursor:pointer;margin-bottom:14px;padding:4px 0;
+  }
+
+  /* ---- settings ---- */
+  .set-sec{margin-bottom:26px;}
+  .set-h{
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin-bottom:8px;
+  }
+  .set-p{font-size:16px;color:var(--ink-soft);margin-bottom:10px;}
+  .btn{
+    font-family:'Fraunces',serif;font-size:14px;font-weight:500;padding:9px 16px;
+    background:var(--ink);color:var(--paper);border:none;border-radius:2px;
+    cursor:pointer;margin:0 8px 8px 0;
+  }
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink);}
+  .btn.danger{background:var(--accent);}
+  .star-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 2px;border-bottom:1px solid var(--line);font-size:16px;
+  }
+  .star-item button{
+    background:none;border:1px solid var(--line);border-radius:2px;
+    font-family:'Fraunces',serif;font-size:12px;padding:3px 9px;cursor:pointer;color:var(--ink-soft);
+  }
+  .empty{color:var(--muted);font-style:italic;font-size:16px;}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:30px;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<input type="file" id="importer" accept="application/json" style="display:none">
+
+<!-- ============ DATA ============ -->
+<script src="lists.js"></script>
+
+<!-- ============ ENGINE ============ -->
+<script>
+"use strict";
+
+/* ---------- deterministic RNG ---------- */
+function hashStr(str){
+  str=String(str); let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){
+    h=Math.imul(h^str.charCodeAt(i),3432918353);
+    h=(h<<13)|(h>>>19);
+  }
+  h=Math.imul(h^(h>>>16),2246822507);
+  h=Math.imul(h^(h>>>13),3266489909);
+  return (h^(h>>>16))>>>0;
+}
+function mulberry32(a){
+  return function(){
+    a|=0; a=(a+0x6D2B79F5)|0;
+    let t=Math.imul(a^(a>>>15),1|a);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function weightedPick(items,weightFn,rng){
+  let total=0; for(const it of items) total+=weightFn(it);
+  let r=rng()*total;
+  for(const it of items){ r-=weightFn(it); if(r<=0) return it; }
+  return items[items.length-1];
+}
+
+/* ---------- dates ---------- */
+function ymd(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function todayStr(){ return ymd(new Date()); }
+function daysBetween(a,b){
+  return Math.round((Date.parse(b+'T00:00:00')-Date.parse(a+'T00:00:00'))/86400000);
+}
+function prettyDate(s){
+  const d=new Date(s+'T00:00:00');
+  return d.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+/* ---------- build normalized lists ---------- */
+function buildLists(){
+  const out=[];
+  for(const raw of (window.APP_LISTS||[])){
+    if(raw.type==='word'){
+      const items=[];
+      (raw.simple||[]).forEach(w=>items.push({id:w,forms:[w],weight:1}));
+      (raw.weighted||[]).forEach(w=>items.push({id:w,forms:[w],weight:2}));
+      (raw.groups||[]).forEach(g=>items.push({id:g[0],forms:g.slice(),weight:2}));
+      (raw.noDef||[]).forEach(w=>items.push({id:w,forms:[w],weight:1,noDef:true}));
+      out.push({id:raw.id,name:raw.name,type:'word',items});
+    }else{
+      const items=(raw.items||[]).map(it=>({
+        id:it.name,name:it.name,titles:it.titles||[it.name],
+        formula:it.formula||null,weight:1
+      }));
+      out.push({id:raw.id,name:raw.name,type:'wiki',items});
+    }
+  }
+  return out;
+}
+const LISTS=buildLists();
+function getList(id){ return LISTS.find(l=>l.id===id); }
+function getItem(list,itemId){ return list?list.items.find(i=>i.id===itemId):null; }
+
+/* ---------- state ---------- */
+let state;
+function loadState(){
+  try{ state=JSON.parse(localStorage.getItem('dd_state')); }catch(e){ state=null; }
+  if(!state||typeof state!=='object') state={};
+  if(typeof state.seed!=='number') state.seed=Math.floor(Math.random()*4294967296);
+  if(!Array.isArray(state.history)) state.history=[];
+  if(!state.stars||typeof state.stars!=='object') state.stars={};
+}
+function saveState(){ localStorage.setItem('dd_state',JSON.stringify(state)); }
+function starKey(listId,itemId){ return listId+'::'+itemId; }
+function isStarred(listId,itemId){ return !!state.stars[starKey(listId,itemId)]; }
+function toggleStar(listId,itemId){
+  const k=starKey(listId,itemId);
+  if(state.stars[k]) delete state.stars[k]; else state.stars[k]=true;
+  saveState();
+}
+
+/* ---------- selection ---------- */
+function cooldownDays(listSize){
+  return Math.min(14,Math.max(1,Math.floor(listSize*0.7)));
+}
+/* a day's picks for a list may be stored as a string (old format / single pick)
+   or an array (multiple picks). Always read through idsOf(). */
+function idsOf(entry,listId){
+  const v=entry.picks[listId];
+  if(!v) return [];
+  return Array.isArray(v)?v:[v];
+}
+/* Word-list cycle with decaying weights: every draw halves a word's weight,
+   and below 1x it goes inactive until the cycle ends. So per cycle:
+   normal 1x -> out (1 draw); weighted 2x -> 1x -> out (2 draws);
+   starred normal 2x -> 1x -> out (2); starred weighted 4x -> 2x -> 1x -> out (3).
+   Nothing persists at elevated odds, so nothing smothers the stragglers,
+   and the cycle length is a fixed count of draws. */
+function drawCap(effW){ let n=0; while(effW>=1){ n++; effW/=2; } return n; }
+function wordCycleInfo(list,date){
+  const capOf={}; let totalCap=0;
+  for(const it of list.items){
+    capOf[it.id]=drawCap(it.weight*(isStarred(list.id,it.id)?2:1));
+    totalCap+=capOf[it.id];
+  }
+  let cnt={}, used=0;
+  for(const h of state.history){
+    if(daysBetween(h.date,date)<=0) break;
+    for(const id of idsOf(h,list.id)){
+      if(capOf[id]===undefined) continue;
+      cnt[id]=(cnt[id]||0)+1;
+      if(cnt[id]<=capOf[id]) used++;
+      if(used>=totalCap){ cnt={}; used=0; } /* cycle complete: all return */
+    }
+  }
+  return {cnt:cnt,capOf:capOf};
+}
+function dailyCount(list,date){
+  if(list.type!=='word') return 1;
+  /* total turns in one full cycle (normal 1, weighted 2, starred 2, both 3),
+     divided over a year and rounded UP to a fixed whole number per day.
+     Grows automatically as words are added; hard cap of 5 a day. */
+  let total=0;
+  for(const it of list.items) total+=drawCap(it.weight*(isStarred(list.id,it.id)?2:1));
+  return Math.max(1,Math.min(5,Math.ceil(total/365)));
+}
+function selectForList(list,date){
+  const S=list.items.length;
+  if(S===0) return [];
+  const cd=cooldownDays(S);
+  const recent=new Set();
+  for(const h of state.history){
+    const diff=daysBetween(h.date,date);
+    if(diff>0&&diff<=cd){ idsOf(h,list.id).forEach(id=>recent.add(id)); }
+  }
+  const count=Math.min(dailyCount(list,date),S);
+  const rng=mulberry32(hashStr(state.seed+'|'+date+'|'+list.id));
+  const wf=it=>it.weight*(isStarred(list.id,it.id)?2:1);
+  const info=list.type==='word'?wordCycleInfo(list,date):null;
+  /* current-cycle weight: halves per draw this cycle; <1 means inactive */
+  const cw=it=>wf(it)/Math.pow(2,(info&&info.cnt[it.id])||0);
+  const picked=[],pickedSet=new Set();
+  for(let i=0;i<count;i++){
+    let eligible=list.items.filter(it=>
+      !pickedSet.has(it.id)&&
+      (isStarred(list.id,it.id)||!recent.has(it.id))&&
+      (!info||cw(it)>=1));
+    if(eligible.length===0) eligible=list.items.filter(it=>!pickedSet.has(it.id));
+    if(eligible.length===0) break;
+    const p=weightedPick(eligible,info?cw:wf,rng);
+    picked.push(p); pickedSet.add(p.id);
+    if(info) info.cnt[p.id]=(info.cnt[p.id]||0)+1;
+  }
+  return picked;
+}
+function computeDay(date){
+  let entry=state.history.find(h=>h.date===date);
+  if(entry) return entry;
+  entry={date:date,picks:{}};
+  for(const list of LISTS){
+    const picks=selectForList(list,date);
+    if(picks.length===1) entry.picks[list.id]=picks[0].id;
+    else if(picks.length>1) entry.picks[list.id]=picks.map(p=>p.id);
+  }
+  state.history.push(entry);
+  state.history.sort((a,b)=>a.date<b.date?-1:1);
+  saveState();
+  return entry;
+}
+/* how many times an item was picked strictly before `date` (for word-form rotation) */
+function priorPickCount(listId,itemId,date){
+  let n=0;
+  for(const h of state.history){
+    if(daysBetween(h.date,date)>0 && idsOf(h,listId).indexOf(itemId)!==-1) n++;
+  }
+  return n;
+}
+
+/* ---------- network with cache ---------- */
+function getCache(){ try{return JSON.parse(localStorage.getItem('dd_cache')||'{}');}catch(e){return {};} }
+function setCache(c){ try{localStorage.setItem('dd_cache',JSON.stringify(c));}catch(e){} }
+/* re-reads before writing so parallel fetches don't clobber each other;
+   prunes oldest entries so the cache can't grow without bound */
+function cachePut(url,data){
+  const c=getCache();
+  c[url]=data;
+  const keys=Object.keys(c);
+  if(keys.length>1500){ for(let i=0;i<keys.length-1200;i++) delete c[keys[i]]; }
+  setCache(c);
+}
+async function fetchJSON(url,allow404){
+  const cache=getCache();
+  if(cache[url]!==undefined) return cache[url];
+  const res=await fetch(url);
+  if(!res.ok){
+    if(allow404 && res.status===404){
+      const data=await res.json().catch(()=>({notfound:true}));
+      data.__notfound=true; cachePut(url,data); return data;
+    }
+    throw new Error('HTTP '+res.status);
+  }
+  const data=await res.json();
+  cachePut(url,data);
+  return data;
+}
+const DICT='https://api.dictionaryapi.dev/api/v2/entries/en/';
+const WIKI='https://en.wikipedia.org/api/rest_v1/page/summary/';
+
+/* ---------- helpers ---------- */
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function gsearch(q){ return 'https://www.google.com/search?q='+encodeURIComponent(q); }
+
+/* ---------- card rendering ---------- */
+function cardEl(list,item,date){
+  const card=document.createElement('article');
+  card.className='card';
+  const starred=isStarred(list.id,item.id);
+
+  /* word-form rotation */
+  let displayForm=item.id, title;
+  if(list.type==='word'){
+    const forms=item.forms||[item.id];
+    displayForm=forms[priorPickCount(list.id,item.id,date)%forms.length];
+    title=cap(displayForm);
+  }else{
+    title=item.name;
+  }
+
+  card.innerHTML=
+    '<div class="card-top">'+
+      '<span class="list-tag">'+esc(list.name)+'</span>'+
+      '<button class="star'+(starred?' on':'')+'" aria-label="favourite">'+(starred?'\u2605':'\u2606')+'</button>'+
+    '</div>'+
+    '<h2 class="item-title">'+esc(title)+'</h2>'+
+    '<div class="card-body"><span class="loading">Gathering\u2026</span></div>'+
+    '<div class="formula" style="display:none"></div>'+
+    '<button class="more-btn" style="display:none">Tell me more</button>'+
+    '<div class="more-body" hidden></div>';
+
+  const starBtn=card.querySelector('.star');
+  starBtn.addEventListener('click',()=>{
+    toggleStar(list.id,item.id);
+    const on=isStarred(list.id,item.id);
+    starBtn.classList.toggle('on',on);
+    starBtn.textContent=on?'\u2605':'\u2606';
+  });
+
+  if(list.type==='word') fillWord(card,list,item,displayForm);
+  else fillWiki(card,list,item);
+
+  return card;
+}
+
+/* ---- words ---- */
+async function fillWord(card,list,item,form){
+  const body=card.querySelector('.card-body');
+  const moreBtn=card.querySelector('.more-btn');
+  const moreBody=card.querySelector('.more-body');
+
+  if(item.noDef){
+    body.innerHTML='<p>No standard definition found for this entry.</p>';
+    moreBtn.style.display='';
+    moreBtn.textContent='Look it up';
+    moreBtn.addEventListener('click',()=>{
+      window.open(gsearch(form+' definition'),'_blank');
+    });
+    return;
+  }
+  try{
+    const data=await fetchJSON(DICT+encodeURIComponent(form),true);
+    if(data.__notfound||!Array.isArray(data)){
+      body.innerHTML='<p>No dictionary entry found.</p>';
+      moreBtn.style.display=''; moreBtn.textContent='Search the web';
+      moreBtn.addEventListener('click',()=>window.open(gsearch(form+' definition'),'_blank'));
+      return;
+    }
+    const entry=data[0];
+    const phon=(entry.phonetic||(entry.phonetics||[]).map(p=>p.text).find(Boolean)||'');
+    let html='';
+    if(phon) html='<div class="pron">'+esc(phon)+'</div>';
+    const meanings=entry.meanings||[];
+    /* main: first meaning, up to 2 definitions */
+    const m0=meanings[0];
+    if(m0){
+      html+='<p><span class="pos">'+esc(m0.partOfSpeech)+'</span></p>';
+      m0.definitions.slice(0,2).forEach(d=>{
+        html+='<p>'+esc(d.definition)+'</p>';
+        if(d.example) html+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
+      });
+    }
+    body.innerHTML=html||'<p>Definition unavailable.</p>';
+
+    /* more: remaining meanings + link */
+    let more='';
+    meanings.forEach((m,mi)=>{
+      const defs=(mi===0)?m.definitions.slice(2):m.definitions;
+      if(defs.length===0 && mi===0) return;
+      if(defs.length){
+        more+='<p><span class="pos">'+esc(m.partOfSpeech)+'</span></p>';
+        defs.slice(0,4).forEach(d=>{
+          more+='<p>'+esc(d.definition)+'</p>';
+          if(d.example) more+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
+        });
+      }
+    });
+    more+='<p><a class="link" target="_blank" href="'+gsearch(form+' meaning origin')+'">Search the web for more \u2192</a></p>';
+    moreBody.innerHTML=more;
+    moreBtn.style.display='';
+    moreBtn.addEventListener('click',()=>{
+      const hid=moreBody.hasAttribute('hidden');
+      if(hid){moreBody.removeAttribute('hidden');moreBtn.textContent='Show less';}
+      else{moreBody.setAttribute('hidden','');moreBtn.textContent='Tell me more';}
+    });
+  }catch(e){
+    showError(body,()=>fillWord(card,list,item,form));
+  }
+}
+
+/* ---- wiki (people / laws / machines) ---- */
+async function fillWiki(card,list,item){
+  const body=card.querySelector('.card-body');
+  const formulaBox=card.querySelector('.formula');
+  const moreBtn=card.querySelector('.more-btn');
+  const moreBody=card.querySelector('.more-body');
+  const titles=item.titles||[item.name];
+  try{
+    const results=await Promise.all(titles.map(async t=>({
+      title:t, data:await fetchJSON(WIKI+encodeURIComponent(t.replace(/ /g,'_')),true)
+    })));
+    let html='',links=[];
+    results.forEach(r=>{
+      if(titles.length>1) html+='<p class="subhead">'+esc(r.data.title||r.title)+'</p>';
+      if(r.data.__notfound||!r.data.extract){
+        html+='<p class="errline">No Wikipedia summary found for \u201c'+esc(r.title)+'\u201d.</p>';
+      }else{
+        html+='<p>'+esc(r.data.extract)+'</p>';
+      }
+      const url=r.data&&r.data.content_urls&&r.data.content_urls.desktop&&r.data.content_urls.desktop.page;
+      links.push({label:r.data.title||r.title,url:url||('https://en.wikipedia.org/wiki/'+encodeURIComponent(r.title.replace(/ /g,'_')))});
+    });
+    body.innerHTML=html;
+
+    /* formula */
+    if(item.formula) renderFormula(formulaBox,item.formula);
+
+    /* tell me more -> wikipedia article links */
+    let more='<p>Read the full article'+(links.length>1?'s':'')+':</p>';
+    links.forEach(l=>{
+      more+='<p><a class="link" target="_blank" href="'+esc(l.url)+'">'+esc(l.label)+' on Wikipedia \u2192</a></p>';
+    });
+    moreBody.innerHTML=more;
+    moreBtn.style.display='';
+    moreBtn.addEventListener('click',()=>{
+      const hid=moreBody.hasAttribute('hidden');
+      if(hid){moreBody.removeAttribute('hidden');moreBtn.textContent='Show less';}
+      else{moreBody.setAttribute('hidden','');moreBtn.textContent='Tell me more';}
+    });
+  }catch(e){
+    showError(body,()=>fillWiki(card,list,item));
+  }
+}
+/* KaTeX loads deferred; on a cache-fast path a card can render first.
+   Show raw TeX immediately, upgrade once the library arrives. */
+function renderFormula(box,tex){
+  box.style.display='';
+  const paint=()=>{ try{katex.render(tex,box,{throwOnError:false,displayMode:true});}catch(e){box.textContent=tex;} };
+  if(window.katex){ paint(); }
+  else{
+    box.textContent=tex;
+    window.addEventListener('load',()=>{ if(window.katex) paint(); },{once:true});
+  }
+}
+function showError(body,retryFn){
+  body.innerHTML='<span class="errline">Couldn\u2019t load \u2014 check your connection.</span>'+
+    '<button class="retry">Retry</button>';
+  body.querySelector('.retry').addEventListener('click',()=>{
+    body.innerHTML='<span class="loading">Gathering\u2026</span>';
+    retryFn();
+  });
+}
+
+/* ---------- views ---------- */
+let view='today', archiveDate=null;
+
+function render(){
+  const app=document.getElementById('app');
+  app.innerHTML='';
+
+  /* header */
+  const header=document.createElement('header');
+  header.innerHTML=
+    '<div class="kicker">A Daily Digest</div>'+
+    '<div class="masthead">Today\u2019s Learning</div>'+
+    '<div class="date-line">'+esc(prettyDate(todayStr()))+'</div>'+
+    '<div class="hr"></div>';
+  app.appendChild(header);
+
+  /* nav */
+  const nav=document.createElement('nav');
+  [['today','Today'],['archive','Archive'],['settings','Settings']].forEach(([v,label])=>{
+    const b=document.createElement('button');
+    b.textContent=label;
+    if(view===v) b.classList.add('active');
+    b.addEventListener('click',()=>{view=v;archiveDate=null;render();});
+    nav.appendChild(b);
+  });
+  app.appendChild(nav);
+
+  if(view==='today') renderDay(app,todayStr(),false);
+  else if(view==='archive') renderArchive(app);
+  else renderSettings(app);
+
+  const f=document.createElement('footer');
+  f.textContent='One item from each list, every day.';
+  app.appendChild(f);
+}
+
+function renderDay(app,date,isArchive){
+  if(isArchive){
+    const back=document.createElement('button');
+    back.className='back-btn';
+    back.textContent='\u2190 Back to archive';
+    back.addEventListener('click',()=>{archiveDate=null;render();});
+    app.appendChild(back);
+    const h=document.createElement('div');
+    h.className='date-line';h.style.marginBottom='14px';
+    h.textContent=prettyDate(date);
+    app.appendChild(h);
+  }
+  const entry=computeDay(date);
+  let any=false;
+  for(const list of LISTS){
+    for(const itemId of idsOf(entry,list.id)){
+      const item=getItem(list,itemId);
+      if(!item) continue;
+      app.appendChild(cardEl(list,item,date));
+      any=true;
+    }
+  }
+  if(!any){
+    const e=document.createElement('p');
+    e.className='empty';
+    e.textContent='No lists found. Add lists in lists.js.';
+    app.appendChild(e);
+  }
+}
+
+function renderArchive(app){
+  if(archiveDate){ renderDay(app,archiveDate,true); return; }
+  const days=state.history.slice().sort((a,b)=>a.date<b.date?1:-1);
+  if(days.length<=1){
+    const e=document.createElement('p');
+    e.className='empty';
+    e.textContent='Your past digests will appear here as the days go by.';
+    app.appendChild(e);
+    return;
+  }
+  days.forEach(h=>{
+    if(h.date===todayStr()) return;
+    const row=document.createElement('div');
+    row.className='arch-row';
+    let n=0; for(const k in h.picks) n+=idsOf(h,k).length;
+    row.innerHTML='<span class="arch-date">'+esc(prettyDate(h.date))+'</span>'+
+      '<span class="arch-meta">'+n+' item'+(n===1?'':'s')+' \u2192</span>';
+    row.addEventListener('click',()=>{archiveDate=h.date;render();});
+    app.appendChild(row);
+  });
+}
+
+function renderSettings(app){
+  /* stats */
+  let totalItems=0; LISTS.forEach(l=>totalItems+=l.items.length);
+  const s1=document.createElement('div');
+  s1.className='set-sec';
+  s1.innerHTML='<div class="set-h">Library</div>'+
+    '<div class="set-p">'+LISTS.length+' list'+(LISTS.length===1?'':'s')+', '+
+    totalItems+' items total. '+state.history.length+' day'+(state.history.length===1?'':'s')+' recorded.</div>';
+  app.appendChild(s1);
+
+  /* backup */
+  const s2=document.createElement('div');
+  s2.className='set-sec';
+  s2.innerHTML='<div class="set-h">Backup</div>'+
+    '<div class="set-p">Your history, favourites and schedule live only on this device. '+
+    'Export occasionally and keep the file in iCloud Drive so nothing is lost.</div>';
+  const expBtn=document.createElement('button');
+  expBtn.className='btn'; expBtn.textContent='Export backup';
+  expBtn.addEventListener('click',exportData);
+  const impBtn=document.createElement('button');
+  impBtn.className='btn ghost'; impBtn.textContent='Import backup';
+  impBtn.addEventListener('click',()=>document.getElementById('importer').click());
+  s2.appendChild(expBtn); s2.appendChild(impBtn);
+  app.appendChild(s2);
+
+  /* favourites */
+  const s3=document.createElement('div');
+  s3.className='set-sec';
+  s3.innerHTML='<div class="set-h">Favourites</div>';
+  const keys=Object.keys(state.stars);
+  if(keys.length===0){
+    const e=document.createElement('p');
+    e.className='empty';
+    e.textContent='Tap the star on any card to favourite it. Favourites skip the cooldown and get double the chance of selection.';
+    s3.appendChild(e);
+  }else{
+    keys.forEach(k=>{
+      const [lid,iid]=k.split('::');
+      const list=getList(lid);
+      const item=getItem(list,iid);
+      const label=item?(list.type==='word'?cap(item.id):item.name):iid;
+      const row=document.createElement('div');
+      row.className='star-item';
+      row.innerHTML='<span>\u2605 '+esc(label)+'<br><span style="font-size:13px;color:var(--muted)">'+
+        esc(list?list.name:lid)+'</span></span>';
+      const rm=document.createElement('button');
+      rm.textContent='Remove';
+      rm.addEventListener('click',()=>{ delete state.stars[k]; saveState(); render(); });
+      row.appendChild(rm);
+      s3.appendChild(row);
+    });
+  }
+  app.appendChild(s3);
+
+  /* weighting note */
+  const s4=document.createElement('div');
+  s4.className='set-sec';
+  s4.innerHTML='<div class="set-h">How selection works</div>'+
+    '<div class="set-p">Every draw halves a word\u2019s chance for the rest of the cycle, and '+
+    'below 1x it goes inactive: normal words appear once, repeated words twice (2x then 1x), '+
+    'starred normal twice, starred repeated three times (4x, 2x, 1x). When every word has used '+
+    'its turns, the whole list returns. No word repeats within two weeks (starred excepted). '+
+    'The daily word count is the list\u2019s total turns divided by 365, rounded up (currently '+
+    'two; capped at five as the list grows). Wiki lists draw one item a day.</div>';
+  app.appendChild(s4);
+
+  /* reset */
+  const s5=document.createElement('div');
+  s5.className='set-sec';
+  s5.innerHTML='<div class="set-h">Reset</div>'+
+    '<div class="set-p">Clears all history and favourites on this device. Cannot be undone.</div>';
+  const rb=document.createElement('button');
+  rb.className='btn danger'; rb.textContent='Reset everything';
+  rb.addEventListener('click',()=>{
+    if(confirm('Erase all history and favourites? This cannot be undone.')){
+      localStorage.removeItem('dd_state');
+      localStorage.removeItem('dd_cache');
+      loadState(); saveState(); view='today'; render();
+    }
+  });
+  s5.appendChild(rb);
+  app.appendChild(s5);
+}
+
+/* ---------- export / import ---------- */
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='daily-digest-backup-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+document.getElementById('importer').addEventListener('change',function(ev){
+  const file=ev.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const data=JSON.parse(reader.result);
+      if(typeof data!=='object'||!Array.isArray(data.history)) throw new Error('bad file');
+      state=data;
+      if(typeof state.seed!=='number') state.seed=Math.floor(Math.random()*4294967296);
+      if(!state.stars) state.stars={};
+      saveState();
+      alert('Backup restored.');
+      view='today'; render();
+    }catch(e){ alert('That file could not be read as a Daily Digest backup.'); }
+  };
+  reader.readAsText(file);
+  ev.target.value='';
+});
+
+/* ---------- go ---------- */
+let renderedFor=null;
+const _render=render;
+render=function(){ renderedFor=todayStr(); _render(); };
+function refreshIfNewDay(){
+  if(todayStr()!==renderedFor){
+    view='today'; archiveDate=null;
+    computeDay(todayStr()); render();
+  }
+}
+/* iOS resumes a home-screen app frozen; without this, yesterday's digest
+   would stay on screen until a manual reload */
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshIfNewDay(); });
+window.addEventListener('focus',refreshIfNewDay);
+
+loadState();
+computeDay(todayStr());
+render();
+</script>
+</body>
+</html>
