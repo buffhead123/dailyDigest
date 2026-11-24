@@ -17,6 +17,12 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 
+<!-- Chess rendering (chessboard.js needs jQuery; chess.js enforces legal moves) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,6 +122,102 @@
   }
   .ex{font-style:italic;color:var(--ink-soft);}
 
+  /* ---- reference banner (top of Today view) ---- */
+  .ref-banner{
+    margin:0 0 16px; padding:9px 12px;
+    background:var(--paper-card); border:1px solid var(--line); border-radius:2px;
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    border-left:3px solid var(--accent-soft);
+  }
+  .ref-banner-label{
+    font-family:'Fraunces',serif; font-weight:500; font-size:13px;
+    letter-spacing:.04em; color:var(--ink-soft); flex-shrink:0;
+  }
+  .ref-banner-formula{
+    overflow-x:auto; flex:1; min-width:0;
+  }
+  .ref-banner-formula .katex{font-size:1em;}
+  .ref-banner-value{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px; color:var(--ink);
+  }
+
+  /* ---- artworks ---- */
+  .artwork-image{
+    margin:10px auto 8px; text-align:center; min-height:120px;
+    display:flex; align-items:center; justify-content:center;
+    background:#fff; border:1px solid var(--line); border-radius:2px;
+    padding:6px;
+  }
+  .artwork-image img{
+    max-width:100%; max-height:380px; height:auto; display:block;
+  }
+  .artwork-caption{
+    font-family:'Fraunces',serif; font-style:italic; font-size:15px;
+    color:var(--ink-soft); text-align:center; margin:4px 2px 2px;
+  }
+
+  /* ---- quotes ---- */
+  .quote-body{
+    font-family:'Fraunces',serif; font-weight:400; font-size:22px;
+    line-height:1.38; letter-spacing:-.005em;
+    color:var(--ink); margin:14px 4px 10px;
+    padding-left:14px; border-left:3px solid var(--accent-soft);
+    font-style:italic;
+  }
+  .quote-body::before{
+    content:'\201C'; font-family:'Fraunces',serif; font-size:40px;
+    line-height:0; vertical-align:-12px; margin-right:2px;
+    color:var(--accent-soft);
+  }
+  .quote-body::after{
+    content:'\201D'; font-family:'Fraunces',serif; font-size:40px;
+    line-height:0; vertical-align:-18px; margin-left:2px;
+    color:var(--accent-soft);
+  }
+  .quote-author{
+    font-family:'Fraunces',serif; font-size:14px; letter-spacing:.04em;
+    color:var(--ink-soft); text-align:right; margin:4px 8px 6px;
+  }
+
+  /* ---- chess board ---- */
+  .chess-wrap{margin:14px 0 4px;}
+  .chess-board{
+    width:100%; max-width:340px; margin:0 auto 10px;
+    border:1px solid var(--line); background:var(--paper-card); padding:2px;
+    border-radius:2px;
+  }
+  .chess-board .white-1e1d7{background:#f3ead1 !important;}
+  .chess-board .black-3c85d{background:#9a7f4a !important;}
+  .chess-board .highlight-white{box-shadow:inset 0 0 0 3px var(--accent-soft) !important;}
+  .chess-board .highlight-black{box-shadow:inset 0 0 0 3px var(--accent-soft) !important;}
+  .chess-caption{
+    font-family:'Newsreader',serif; font-style:italic; color:var(--ink-soft);
+    font-size:15px; text-align:center; margin:0 0 8px;
+  }
+  .chess-controls{
+    display:flex; gap:6px; justify-content:center; margin-bottom:4px; flex-wrap:wrap;
+  }
+  .chess-controls button{
+    font-family:'Fraunces',serif; font-size:13px; font-weight:500;
+    padding:6px 12px; min-width:44px;
+    background:transparent; border:1px solid var(--line); border-radius:2px;
+    color:var(--ink-soft); cursor:pointer; transition:.12s;
+  }
+  .chess-controls button:hover{background:var(--paper-card); color:var(--ink);}
+  .chess-controls button:disabled{opacity:.35; cursor:default;}
+  .chess-controls button.on{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+  .chess-movelabel{
+    font-family:'Fraunces',serif; font-size:12px; color:var(--muted);
+    text-align:center; letter-spacing:.06em; margin-top:2px;
+  }
+  .chess-fallback{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+    color:var(--ink-soft); background:#fff; padding:8px 10px;
+    border:1px solid var(--line); border-radius:2px; overflow-x:auto;
+    word-break:break-all;
+  }
+
   /* ---- archive ---- */
   .arch-row{
     display:flex;justify-content:space-between;align-items:baseline;
@@ -207,6 +309,8 @@ function prettyDate(s){
 function buildLists(){
   const out=[];
   for(const raw of (window.APP_LISTS||[])){
+    /* reference list is for the Reference tab only, not the daily digest */
+    if(raw.type==='reference') continue;
     if(raw.type==='word'){
       const items=[];
       (raw.simple||[]).forEach(w=>items.push({id:w,forms:[w],weight:1}));
@@ -214,6 +318,23 @@ function buildLists(){
       (raw.groups||[]).forEach(g=>items.push({id:g[0],forms:g.slice(),weight:2}));
       (raw.noDef||[]).forEach(w=>items.push({id:w,forms:[w],weight:1,noDef:true}));
       out.push({id:raw.id,name:raw.name,type:'word',items});
+    }else if(raw.type==='quote'){
+      /* each quote gets a stable id from first 40 chars (dedupe-safe within a list) */
+      const items=(raw.items||[]).map(it=>({
+        id: it.id || it.text.slice(0,40),
+        text: it.text,
+        author: it.author || null,
+        weight: 1
+      }));
+      out.push({id:raw.id,name:raw.name,type:'quote',items});
+    }else if(raw.type==='artwork'){
+      const items=(raw.items||[]).map(it=>({
+        id: it.name,
+        name: it.name,
+        titles: it.titles || [it.name],
+        weight: 1
+      }));
+      out.push({id:raw.id,name:raw.name,type:'artwork',items});
     }else{
       const items=(raw.items||[]).map(it=>({
         id:it.name,name:it.name,titles:it.titles||[it.name],
@@ -394,6 +515,45 @@ function cardEl(list,item,date){
     title=item.name;
   }
 
+  /* artwork: image + name only, no synopsis */
+  if(list.type==='artwork'){
+    card.innerHTML=
+      '<div class="card-top">'+
+        '<span class="list-tag">'+esc(list.name)+'</span>'+
+        '<button class="star'+(starred?' on':'')+'" aria-label="favourite">'+(starred?'\u2605':'\u2606')+'</button>'+
+      '</div>'+
+      '<div class="artwork-image"><span class="loading">Loading\u2026</span></div>'+
+      '<div class="artwork-caption">'+esc(item.name)+'</div>';
+    const starBtn=card.querySelector('.star');
+    starBtn.addEventListener('click',()=>{
+      toggleStar(list.id,item.id);
+      const on=isStarred(list.id,item.id);
+      starBtn.classList.toggle('on',on);
+      starBtn.textContent=on?'\u2605':'\u2606';
+    });
+    fillArtwork(card,list,item);
+    return card;
+  }
+
+  /* quotes: no title \u2014 the quote is the content */
+  if(list.type==='quote'){
+    card.innerHTML=
+      '<div class="card-top">'+
+        '<span class="list-tag">'+esc(list.name)+'</span>'+
+        '<button class="star'+(starred?' on':'')+'" aria-label="favourite">'+(starred?'\u2605':'\u2606')+'</button>'+
+      '</div>'+
+      '<blockquote class="quote-body">'+esc(item.text)+'</blockquote>'+
+      (item.author?'<div class="quote-author">\u2014 '+esc(item.author)+'</div>':'');
+    const starBtn=card.querySelector('.star');
+    starBtn.addEventListener('click',()=>{
+      toggleStar(list.id,item.id);
+      const on=isStarred(list.id,item.id);
+      starBtn.classList.toggle('on',on);
+      starBtn.textContent=on?'\u2605':'\u2606';
+    });
+    return card;
+  }
+
   card.innerHTML=
     '<div class="card-top">'+
       '<span class="list-tag">'+esc(list.name)+'</span>'+
@@ -402,6 +562,7 @@ function cardEl(list,item,date){
     '<h2 class="item-title">'+esc(title)+'</h2>'+
     '<div class="card-body"><span class="loading">Gathering\u2026</span></div>'+
     '<div class="formula" style="display:none"></div>'+
+    '<div class="chess-wrap" style="display:none"></div>'+
     '<button class="more-btn" style="display:none">Tell me more</button>'+
     '<div class="more-body" hidden></div>';
 
@@ -511,6 +672,13 @@ async function fillWiki(card,list,item){
     /* formula */
     if(item.formula) renderFormula(formulaBox,item.formula);
 
+    /* chess board */
+    if(item.fen || item.pgn){
+      const chessBox=card.querySelector('.chess-wrap');
+      chessBox.style.display='';
+      renderChessBoard(chessBox,item);
+    }
+
     /* tell me more -> wikipedia article links */
     let more='<p>Read the full article'+(links.length>1?'s':'')+':</p>';
     links.forEach(l=>{
@@ -527,6 +695,41 @@ async function fillWiki(card,list,item){
     showError(body,()=>fillWiki(card,list,item));
   }
 }
+
+/* ---- artwork: fetch Wikipedia summary, use the thumbnail image only ---- */
+async function fillArtwork(card,list,item){
+  const imgBox=card.querySelector('.artwork-image');
+  const titles=item.titles||[item.name];
+  try{
+    const data=await fetchJSON(WIKI+encodeURIComponent(titles[0].replace(/ /g,'_')),true);
+    if(data.__notfound){
+      imgBox.innerHTML='<span class="errline">No Wikipedia entry found.</span>';
+      return;
+    }
+    /* summary endpoint returns originalimage and thumbnail. Prefer originalimage
+       if it's not too big; otherwise thumbnail. */
+    const thumb = (data.originalimage && data.originalimage.source) ||
+                  (data.thumbnail && data.thumbnail.source);
+    if(!thumb){
+      imgBox.innerHTML='<span class="errline">No image available.</span>';
+      return;
+    }
+    const img=document.createElement('img');
+    img.src=thumb;
+    img.alt=item.name;
+    img.loading='lazy';
+    imgBox.innerHTML='';
+    imgBox.appendChild(img);
+  }catch(e){
+    imgBox.innerHTML='<span class="errline">Couldn’t load image.</span>'+
+      '<button class="retry">Retry</button>';
+    imgBox.querySelector('.retry').addEventListener('click',()=>{
+      imgBox.innerHTML='<span class="loading">Loading…</span>';
+      fillArtwork(card,list,item);
+    });
+  }
+}
+
 /* KaTeX loads deferred; on a cache-fast path a card can render first.
    Show raw TeX immediately, upgrade once the library arrives. */
 function renderFormula(box,tex){
@@ -544,6 +747,150 @@ function showError(body,retryFn){
   body.querySelector('.retry').addEventListener('click',()=>{
     body.innerHTML='<span class="loading">Gathering\u2026</span>';
     retryFn();
+  });
+}
+
+/* ---------- chess board ---------- */
+/* Each card with fen/pgn renders a board + controls:
+     caption on top, board, [\u25c0 Back \u00b7 \u25b6 Fwd \u00b7 \u21bb Reset \u00b7 \u270e Play] controls, move label.
+   Libraries (chessboard.js + jQuery + chess.js) load from CDN; if any fails
+   to arrive, show a plain-text fallback instead of breaking the card. */
+function renderChessBoard(container, item){
+  const startFen = item.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const pgnMoves = parsePgn(item.pgn || '');
+
+  /* caption */
+  if(item.caption){
+    const cap=document.createElement('p');
+    cap.className='chess-caption';
+    cap.textContent=item.caption;
+    container.appendChild(cap);
+  }
+
+  /* board holder (chessboard.js needs a unique id) */
+  const boardId='chess-'+Math.random().toString(36).slice(2,10);
+  const boardDiv=document.createElement('div');
+  boardDiv.className='chess-board';
+  boardDiv.id=boardId;
+  container.appendChild(boardDiv);
+
+  /* controls */
+  const ctl=document.createElement('div'); ctl.className='chess-controls';
+  const btnBack=document.createElement('button'); btnBack.textContent='\u25c0 Back';
+  const btnFwd =document.createElement('button'); btnFwd.textContent='Fwd \u25b6';
+  const btnReset=document.createElement('button'); btnReset.textContent='\u21ba Reset';
+  const btnPlay=document.createElement('button'); btnPlay.textContent='\u270e Play';
+  ctl.appendChild(btnBack); ctl.appendChild(btnFwd); ctl.appendChild(btnReset);
+  if(pgnMoves.length===0) ctl.appendChild(btnPlay); /* interactive-only mode when no PGN */
+  else ctl.appendChild(btnPlay);
+  container.appendChild(ctl);
+
+  const label=document.createElement('div'); label.className='chess-movelabel';
+  label.textContent=pgnMoves.length ? 'Start position' : 'Static position';
+  container.appendChild(label);
+
+  /* wait for libs to load, then initialise */
+  waitForChessLibs().then(ready=>{
+    if(!ready){
+      /* fallback - show FEN and PGN as text */
+      boardDiv.remove(); ctl.remove(); label.remove();
+      const fb=document.createElement('div'); fb.className='chess-fallback';
+      let msg='position: '+startFen;
+      if(item.pgn) msg+='\nmoves: '+item.pgn;
+      fb.textContent=msg;
+      container.appendChild(fb);
+      return;
+    }
+
+    let game=new Chess(startFen);
+    let board=null;
+    let cursor=0; /* 0 = startFen, 1..n = after move n */
+    let interactive=false;
+
+    function setup(fen, draggable){
+      if(board) board.destroy();
+      board=Chessboard(boardId, {
+        position: fen,
+        draggable: !!draggable,
+        pieceTheme: 'https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
+        onDragStart: (src,piece)=>{
+          if(game.game_over()) return false;
+          if((game.turn()==='w' && piece.search(/^b/)===0) ||
+             (game.turn()==='b' && piece.search(/^w/)===0)) return false;
+        },
+        onDrop: (src,tgt)=>{
+          const mv=game.move({from:src,to:tgt,promotion:'q'});
+          if(mv===null) return 'snapback';
+          label.textContent='you played '+mv.san;
+        },
+        onSnapEnd: ()=>{ board.position(game.fen()); }
+      });
+    }
+
+    function syncToCursor(){
+      const g=new Chess(startFen);
+      for(let i=0;i<cursor;i++){
+        try{ g.move(pgnMoves[i]); }catch(e){ break; }
+      }
+      game=g;
+      setup(game.fen(), interactive);
+      if(cursor===0) label.textContent=pgnMoves.length?'Start position':'Static position';
+      else label.textContent='after '+cursor+'. '+pgnMoves[cursor-1];
+      btnBack.disabled = cursor===0;
+      btnFwd.disabled  = cursor>=pgnMoves.length;
+    }
+
+    btnBack.addEventListener('click', ()=>{
+      if(interactive) return;
+      if(cursor>0){ cursor--; syncToCursor(); }
+    });
+    btnFwd.addEventListener('click', ()=>{
+      if(interactive) return;
+      if(cursor<pgnMoves.length){ cursor++; syncToCursor(); }
+    });
+    btnReset.addEventListener('click', ()=>{
+      cursor=0; interactive=false;
+      btnPlay.classList.remove('on'); btnPlay.textContent='\u270e Play';
+      syncToCursor();
+    });
+    btnPlay.addEventListener('click', ()=>{
+      interactive = !interactive;
+      btnPlay.classList.toggle('on', interactive);
+      btnPlay.textContent = interactive ? '\u270e Playing' : '\u270e Play';
+      /* when entering play mode, keep current position; disable step buttons */
+      btnBack.disabled = interactive || cursor===0;
+      btnFwd.disabled  = interactive || cursor>=pgnMoves.length;
+      if(interactive){
+        label.textContent='your move \u2014 drag a piece';
+        setup(game.fen(), true);
+      } else {
+        syncToCursor();
+      }
+    });
+
+    syncToCursor();
+  });
+}
+
+/* Parse a PGN move string like "1. e4 e5 2. Nf3 Nc6" into ["e4","e5","Nf3","Nc6"].
+   Also handles black-only continuations like "4...d5". */
+function parsePgn(pgn){
+  if(!pgn) return [];
+  /* remove move numbers (1. or 4...) and collapse whitespace */
+  const cleaned = pgn.replace(/\d+\.(\.\.)?/g,' ').replace(/\s+/g,' ').trim();
+  if(!cleaned) return [];
+  return cleaned.split(' ').filter(x=>x && !/^(1-0|0-1|1\/2|\*)$/.test(x));
+}
+
+/* Poll briefly for chessboard.js, jQuery, and chess.js. */
+function waitForChessLibs(){
+  return new Promise(resolve=>{
+    const t0=Date.now();
+    (function tick(){
+      if(window.jQuery && window.Chessboard && window.Chess) return resolve(true);
+      if(Date.now()-t0 > 8000) return resolve(false);
+      setTimeout(tick, 100);
+    })();
   });
 }
 
@@ -595,6 +942,10 @@ function renderDay(app,date,isArchive){
     h.textContent=prettyDate(date);
     app.appendChild(h);
   }
+  /* Reference banner at the top: one formula/constant from the Reference list,
+     deterministically rotated by date. Not a card, not in cooldown rotation. */
+  renderReferenceBanner(app, date);
+
   const entry=computeDay(date);
   let any=false;
   for(const list of LISTS){
@@ -633,6 +984,33 @@ function renderArchive(app){
     row.addEventListener('click',()=>{archiveDate=h.date;render();});
     app.appendChild(row);
   });
+}
+
+function renderReferenceBanner(app, date){
+  /* Small banner at top of Today view - one formula/constant from the Reference
+     list per day, rotating deterministically. Not a card. */
+  const ref = (window.APP_LISTS||[]).find(l=>l.id==='reference');
+  if(!ref || !ref.items || ref.items.length===0) return;
+  const rng = mulberry32(hashStr(state.seed+'|'+date+'|reference'));
+  const item = ref.items[Math.floor(rng()*ref.items.length)];
+  const banner = document.createElement('div');
+  banner.className='ref-banner';
+  const label = document.createElement('div');
+  label.className='ref-banner-label';
+  label.textContent = item.section ? item.section+' · '+item.name : item.name;
+  banner.appendChild(label);
+  if(item.formula){
+    const f = document.createElement('div');
+    f.className='ref-banner-formula';
+    renderFormula(f, item.formula);
+    banner.appendChild(f);
+  } else if(item.value){
+    const v = document.createElement('div');
+    v.className='ref-banner-value';
+    v.textContent = item.value;
+    banner.appendChild(v);
+  }
+  app.appendChild(banner);
 }
 
 function renderSettings(app){
@@ -675,7 +1053,11 @@ function renderSettings(app){
       const [lid,iid]=k.split('::');
       const list=getList(lid);
       const item=getItem(list,iid);
-      const label=item?(list.type==='word'?cap(item.id):item.name):iid;
+      const label=item?(
+        list.type==='word'?cap(item.id):
+        list.type==='quote'?('“'+(item.text.length>60?item.text.slice(0,60)+'…':item.text)+'”'):
+        item.name
+      ):iid;
       const row=document.createElement('div');
       row.className='star-item';
       row.innerHTML='<span>\u2605 '+esc(label)+'<br><span style="font-size:13px;color:var(--muted)">'+
