@@ -332,13 +332,19 @@ function buildLists(){
         id: it.name,
         name: it.name,
         titles: it.titles || [it.name],
+        imageUrl: it.imageUrl || null,
         weight: 1
       }));
       out.push({id:raw.id,name:raw.name,type:'artwork',items});
     }else{
+      /* wiki type: pass through optional fen/pgn/caption so chess items render
+         their board correctly, and formula so cards with abrupt Wikipedia
+         extracts can still show the math. */
       const items=(raw.items||[]).map(it=>({
-        id:it.name,name:it.name,titles:it.titles||[it.name],
-        formula:it.formula||null,weight:1
+        id:it.name, name:it.name, titles:it.titles||[it.name],
+        formula:it.formula||null,
+        fen:it.fen||null, pgn:it.pgn||null, caption:it.caption||null,
+        weight:1
       }));
       out.push({id:raw.id,name:raw.name,type:'wiki',items});
     }
@@ -493,6 +499,9 @@ async function fetchJSON(url,allow404){
 }
 const DICT='https://api.dictionaryapi.dev/api/v2/entries/en/';
 const WIKI='https://en.wikipedia.org/api/rest_v1/page/summary/';
+/* For math rescue: fetch the parsed intro HTML (section 0) which preserves
+   math equations. The /page/summary/ endpoint strips math entirely. */
+const WIKI_PARSE='https://en.wikipedia.org/w/api.php?action=parse&format=json&origin=*&prop=text&section=0&page=';
 
 /* ---------- helpers ---------- */
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
@@ -669,8 +678,23 @@ async function fillWiki(card,list,item){
     });
     body.innerHTML=html;
 
-    /* formula */
-    if(item.formula) renderFormula(formulaBox,item.formula);
+    /* formula: explicit per-item formula wins. Otherwise, if the Wikipedia
+       extract looks abruptly truncated (ends in a trailing colon, equals sign
+       etc. — Wikipedia stripped the equation that was there), auto-rescue
+       the formula from the parsed article HTML. */
+    if(item.formula){
+      renderFormula(formulaBox,item.formula);
+    } else {
+      /* only run the rescue for single-article cards (not bundles) */
+      if(results.length===1 && results[0].data && results[0].data.extract){
+        const txt = results[0].data.extract.trim();
+        if(/[:=\(]$|\\$/.test(txt)){
+          rescueFormula(titles[0]).then(latex=>{
+            if(latex) renderFormula(formulaBox, latex);
+          });
+        }
+      }
+    }
 
     /* chess board */
     if(item.fen || item.pgn){
@@ -696,9 +720,58 @@ async function fillWiki(card,list,item){
   }
 }
 
-/* ---- artwork: fetch Wikipedia summary, use the thumbnail image only ---- */
+/* ---- Auto-rescue formula for cards where the Wikipedia summary API stripped
+   the math (common pattern: extract ends in ":" or "="). Fetches the parsed
+   intro HTML section via the Action API, which preserves math as fallback
+   images carrying LaTeX in their `alt` attribute. Returns the first formula
+   found as a LaTeX string, or null. ---- */
+async function rescueFormula(title){
+  try{
+    const data = await fetchJSON(WIKI_PARSE+encodeURIComponent(title.replace(/ /g,'_')), true);
+    if(!data || data.__notfound || !data.parse || !data.parse.text) return null;
+    const html = data.parse.text['*'];
+    if(!html) return null;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    /* Wikipedia renders math as <img class="mwe-math-fallback-image-..."> with
+       the LaTeX source in the alt attribute. There's also an inline MathML
+       sibling but the img alt is the cleanest LaTeX source. */
+    const imgs = doc.querySelectorAll('img.mwe-math-fallback-image-inline, img.mwe-math-fallback-image-display, .mwe-math-element img');
+    for(const img of imgs){
+      const latex = img.getAttribute('alt');
+      if(latex && latex.trim()) return latex.trim();
+    }
+    /* Also look for raw <math> tags (some articles use them directly). */
+    const maths = doc.querySelectorAll('math annotation[encoding="application/x-tex"], math annotation');
+    for(const a of maths){
+      if(a.textContent && a.textContent.trim()) return a.textContent.trim();
+    }
+    return null;
+  }catch(e){
+    return null;
+  }
+}
+
+/* ---- artwork: show the image. If item.imageUrl is set, use it directly
+   (the robust path). Otherwise try the Wikipedia summary thumbnail. ---- */
 async function fillArtwork(card,list,item){
   const imgBox=card.querySelector('.artwork-image');
+
+  function showImage(src){
+    const img=document.createElement('img');
+    img.src=src;
+    img.alt=item.name;
+    img.loading='lazy';
+    img.referrerPolicy='no-referrer';
+    img.onerror=()=>{ imgBox.innerHTML='<span class="errline">Image failed to load.</span>'; };
+    imgBox.innerHTML='';
+    imgBox.appendChild(img);
+  }
+
+  /* direct URL path */
+  if(item.imageUrl){ showImage(item.imageUrl); return; }
+
+  /* fall back to Wikipedia summary */
   const titles=item.titles||[item.name];
   try{
     const data=await fetchJSON(WIKI+encodeURIComponent(titles[0].replace(/ /g,'_')),true);
@@ -706,20 +779,13 @@ async function fillArtwork(card,list,item){
       imgBox.innerHTML='<span class="errline">No Wikipedia entry found.</span>';
       return;
     }
-    /* summary endpoint returns originalimage and thumbnail. Prefer originalimage
-       if it's not too big; otherwise thumbnail. */
-    const thumb = (data.originalimage && data.originalimage.source) ||
-                  (data.thumbnail && data.thumbnail.source);
-    if(!thumb){
-      imgBox.innerHTML='<span class="errline">No image available.</span>';
+    const src = (data.originalimage && data.originalimage.source) ||
+                (data.thumbnail && data.thumbnail.source);
+    if(!src){
+      imgBox.innerHTML='<span class="errline">No image available — add imageUrl to the entry.</span>';
       return;
     }
-    const img=document.createElement('img');
-    img.src=thumb;
-    img.alt=item.name;
-    img.loading='lazy';
-    imgBox.innerHTML='';
-    imgBox.appendChild(img);
+    showImage(src);
   }catch(e){
     imgBox.innerHTML='<span class="errline">Couldn’t load image.</span>'+
       '<button class="retry">Retry</button>';

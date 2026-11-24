@@ -1991,9 +1991,15 @@ window.APP_LISTS = [
   name: "Artworks",
   type: "artwork",
   items: [
-    { name: "Pandemonium (John Martin)", titles: ["Pandemonium (painting)"] },
-    { name: "Titania Sleeping (Richard Dadd)", titles: ["Titania Sleeping"] },
-    { name: "Hylas and the Nymphs (Waterhouse)", titles: ["Hylas and the Nymphs"] }
+    { name: "Pandemonium (John Martin)",
+      titles: ["Pandemonium (painting)"],
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/John_Martin_-_Pandemonium_-_WGA14113.jpg/1280px-John_Martin_-_Pandemonium_-_WGA14113.jpg" },
+    { name: "Titania Sleeping (Richard Dadd)",
+      titles: ["Richard Dadd"],
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Richard_Dadd_-_Titania_Sleeping.jpg/1024px-Richard_Dadd_-_Titania_Sleeping.jpg" },
+    { name: "Hylas and the Nymphs (Waterhouse)",
+      titles: ["Hylas and the Nymphs"],
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/John_William_Waterhouse_-_Hylas_and_the_Nymphs_%281896%29.jpg/1280px-John_William_Waterhouse_-_Hylas_and_the_Nymphs_%281896%29.jpg" }
   ]
 },
 
