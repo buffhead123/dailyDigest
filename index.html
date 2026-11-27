@@ -13,6 +13,30 @@
 <meta name="theme-color" content="#efe9da">
 <link rel="apple-touch-icon" href="icon.png">
 
+<!-- Discourage any intermediate cache from serving stale shells. The real
+     fix is the service worker below - this just helps browsers that respect
+     these hints. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<!-- Service worker: network-first for same-origin so Hard refresh actually
+     refreshes on iOS PWAs. Registered before anything else loads. -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { scope: './' })
+      .then(reg => {
+        /* When a new SW takes over, auto-reload once so the user sees fresh code */
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloaded) return; reloaded = true;
+          window.location.reload();
+        });
+      })
+      .catch(() => { /* ignore - app still works, Hard refresh button is fallback */ });
+  }
+</script>
+
 <!-- KaTeX for formula rendering -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
@@ -41,17 +65,56 @@
     font-size:18px; line-height:1.55;
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     -webkit-font-smoothing:antialiased;
-    /* Classical laid-paper texture: faint vertical lines like old engraving
-       plates, with a subtle warm vignette. Barely visible but gives depth. */
+    /* Aged parchment: warm vignette + scattered 'foxing' spots + fine grain.
+       Multiple layered gradients simulate the character of old paper without
+       needing an image file. The spots are positioned deterministically so
+       they're subtle but organic - not a mechanical pattern. */
     background-color:var(--paper);
     background-image:
+      /* scattered foxing - amber spots suggesting age */
+      radial-gradient(ellipse 60px 40px at 12% 8%,  rgba(150,100,55,.055) 0%, transparent 70%),
+      radial-gradient(ellipse 40px 55px at 88% 15%, rgba(150,100,55,.045) 0%, transparent 70%),
+      radial-gradient(ellipse 50px 35px at 25% 45%, rgba(150,100,55,.04)  0%, transparent 70%),
+      radial-gradient(ellipse 45px 60px at 75% 55%, rgba(150,100,55,.05)  0%, transparent 70%),
+      radial-gradient(ellipse 55px 40px at 15% 82%, rgba(150,100,55,.045) 0%, transparent 70%),
+      radial-gradient(ellipse 35px 50px at 90% 90%, rgba(150,100,55,.04)  0%, transparent 70%),
+      radial-gradient(ellipse 30px 30px at 50% 30%, rgba(140,90,50,.03)   0%, transparent 70%),
+      radial-gradient(ellipse 40px 40px at 60% 72%, rgba(140,90,50,.035)  0%, transparent 70%),
+      /* warm centred glow */
+      radial-gradient(ellipse at 50% 20%, rgba(255,245,215,.35) 0%, transparent 55%),
+      /* subtle edge vignette - darker at the margins */
+      radial-gradient(ellipse at center, transparent 50%, rgba(90,60,35,.07) 100%),
+      /* fine vertical laid-paper lines */
       repeating-linear-gradient(90deg,
-        transparent 0, transparent 3px,
-        rgba(90,81,66,.012) 3px, rgba(90,81,66,.012) 4px),
-      radial-gradient(ellipse at top, rgba(255,255,255,.4) 0%, transparent 60%);
+        transparent 0, transparent 2px,
+        rgba(90,81,66,.02) 2px, rgba(90,81,66,.02) 3px);
     background-attachment:fixed;
+    background-size:100% 100%;
   }
-  .wrap{max-width:660px;margin:0 auto;padding:22px 20px 80px;}
+  .wrap{max-width:660px;margin:0 auto;padding:22px 20px 80px;position:relative;}
+  /* Decorative page ornaments: a flowing botanical fleuron at the very top
+     above the masthead, and another at the bottom below the last card.
+     Scrollwork emanating from a central diamond - classical/romantic feel. */
+  .wrap::before{
+    content:''; display:block; height:36px; margin:0 auto 4px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 36'><g fill='none' stroke='%235a5142' stroke-width='0.9' stroke-linecap='round'><line x1='0' y1='18' x2='210' y2='18' opacity='0.4'/><line x1='390' y1='18' x2='600' y2='18' opacity='0.4'/><path d='M 220 18 Q 235 12, 250 18 Q 260 25, 272 22 Q 282 18, 285 10' opacity='0.75'/><path d='M 380 18 Q 365 12, 350 18 Q 340 25, 328 22 Q 318 18, 315 10' opacity='0.75'/><path d='M 220 18 Q 235 24, 250 18' opacity='0.5'/><path d='M 380 18 Q 365 24, 350 18' opacity='0.5'/><path d='M 290 18 L 295 13 L 300 18 L 295 23 Z' fill='%235a5142'/><path d='M 310 18 L 305 13 L 300 18 L 305 23 Z' fill='%235a5142'/><circle cx='300' cy='18' r='1.6' fill='%235a5142'/><circle cx='285' cy='10' r='1.1' fill='%235a5142'/><circle cx='315' cy='10' r='1.1' fill='%235a5142'/><path d='M 272 22 Q 265 28, 258 26' opacity='0.5'/><path d='M 328 22 Q 335 28, 342 26' opacity='0.5'/></g></svg>");
+    background-repeat:no-repeat; background-position:center; background-size:contain;
+    opacity:.75;
+  }
+  .wrap::after{
+    content:''; display:block; height:44px; margin:28px auto 0;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 44'><g fill='none' stroke='%235a5142' stroke-width='0.9' stroke-linecap='round'><line x1='30' y1='22' x2='230' y2='22' opacity='0.35'/><line x1='370' y1='22' x2='570' y2='22' opacity='0.35'/><path d='M 240 22 Q 258 14, 275 22 Q 290 30, 300 22' opacity='0.8'/><path d='M 360 22 Q 342 14, 325 22 Q 310 30, 300 22' opacity='0.8'/><path d='M 240 22 Q 258 30, 275 22' opacity='0.55'/><path d='M 360 22 Q 342 30, 325 22' opacity='0.55'/><path d='M 275 22 Q 268 10, 258 6' opacity='0.6'/><path d='M 325 22 Q 332 10, 342 6' opacity='0.6'/><path d='M 275 22 Q 268 34, 258 38' opacity='0.6'/><path d='M 325 22 Q 332 34, 342 38' opacity='0.6'/><circle cx='300' cy='22' r='3' fill='%235a5142'/><circle cx='258' cy='6' r='1.3' fill='%235a5142'/><circle cx='342' cy='6' r='1.3' fill='%235a5142'/><circle cx='258' cy='38' r='1.3' fill='%235a5142'/><circle cx='342' cy='38' r='1.3' fill='%235a5142'/><circle cx='285' cy='22' r='1' fill='%235a5142'/><circle cx='315' cy='22' r='1' fill='%235a5142'/></g></svg>");
+    background-repeat:no-repeat; background-position:center; background-size:contain;
+    opacity:.6;
+  }
+  /* Between-card ornament - small centred fleuron that acts as a natural
+     visual separator. Inserted by renderDay as a .card-sep div. */
+  .card-sep{
+    height:22px; margin:2px auto 14px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 22'><g fill='none' stroke='%238b8270' stroke-width='0.7' stroke-linecap='round'><line x1='30' y1='11' x2='85' y2='11' opacity='0.5'/><line x1='115' y1='11' x2='170' y2='11' opacity='0.5'/><path d='M 90 11 Q 95 7, 100 11 Q 95 15, 90 11 Z' fill='%238b8270'/><path d='M 110 11 Q 105 7, 100 11 Q 105 15, 110 11 Z' fill='%238b8270'/><circle cx='100' cy='11' r='1.4' fill='%238b8270'/></g></svg>");
+    background-repeat:no-repeat; background-position:center; background-size:contain;
+    opacity:.65;
+  }
 
   /* ---- header ---- */
   header{margin-bottom:18px;}
@@ -1231,14 +1294,25 @@ function renderDay(app,date,isArchive){
 
   const entry=computeDay(date);
   let any=false;
+  /* appendWithSep: add a small ornamental separator before every card
+     except the first, so cards read as members of a sequence rather than
+     one wall of boxes. The .card-sep style is in the stylesheet. */
+  function appendWithSep(cardNode){
+    if(any){
+      const sep=document.createElement('div');
+      sep.className='card-sep';
+      app.appendChild(sep);
+    }
+    app.appendChild(cardNode);
+    any=true;
+  }
   /* Render Quotes card first (right after Reference banner), then everything else. */
   const quotesList = LISTS.find(l=>l.id==='quotes');
   if(quotesList){
     for(const itemId of idsOf(entry,quotesList.id)){
       const item=getItem(quotesList,itemId);
       if(!item) continue;
-      app.appendChild(cardEl(quotesList,item,date));
-      any=true;
+      appendWithSep(cardEl(quotesList,item,date));
     }
   }
   for(const list of LISTS){
@@ -1246,8 +1320,7 @@ function renderDay(app,date,isArchive){
     for(const itemId of idsOf(entry,list.id)){
       const item=getItem(list,itemId);
       if(!item) continue;
-      app.appendChild(cardEl(list,item,date));
-      any=true;
+      appendWithSep(cardEl(list,item,date));
     }
   }
   if(!any){
@@ -1387,10 +1460,16 @@ function renderSettings(app){
   const hb=document.createElement('button');
   hb.className='btn'; hb.textContent='Force app update';
   hb.addEventListener('click',async ()=>{
-    /* Aggressive refresh: clear any Cache Storage entries, unregister any
-       service workers (defensive - we don't ship one, but defense in depth),
-       then reload with a fresh ?v= timestamp. The lists.js loader above
-       inherits the same ?v=, so both files are re-fetched. */
+    /* Nuclear refresh for when the SW isn't yet in control (first install
+       after we added it) or something has gone sideways. Multi-step:
+         1. Clear ALL Cache Storage entries
+         2. Tell the active SW to update + skip waiting, so any new sw.js
+            on the server takes over immediately
+         3. If no SW is yet controlling, unregister anything we can find
+            and force the browser to re-register on reload
+         4. Pre-fetch the critical files with cache:'reload' to pull fresh
+            copies from the network into the browser cache
+         5. Reload with a fresh ?v= cache-buster */
     hb.textContent='Refreshing…'; hb.disabled=true;
     try{
       if('caches' in window){
@@ -1399,9 +1478,21 @@ function renderSettings(app){
       }
       if('serviceWorker' in navigator){
         const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r=>r.unregister()));
+        for(const r of regs){
+          try{ await r.update(); }catch(_){}
+          if(r.waiting) r.waiting.postMessage('skipWaiting');
+          if(!navigator.serviceWorker.controller) await r.unregister();
+        }
       }
-    }catch(e){/* ignore - we still reload */}
+      /* Force a network re-download of the core files so they land in the
+         browser cache fresh, before we reload. */
+      const bust = '?__b=' + Date.now();
+      await Promise.all([
+        fetch(window.location.pathname + bust, {cache:'reload'}).catch(()=>{}),
+        fetch('lists.js' + bust, {cache:'reload'}).catch(()=>{}),
+        fetch('sw.js' + bust, {cache:'reload'}).catch(()=>{})
+      ]);
+    }catch(e){/* keep going - we still reload */}
     const base = window.location.pathname;
     window.location.replace(base + '?v=' + Date.now());
   });
