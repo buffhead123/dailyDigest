@@ -1993,12 +1993,14 @@ window.APP_LISTS = [
   items: [
     { name: "Pandemonium (John Martin)",
       titles: ["Pandemonium (painting)"],
+      commonsFile: "John Martin - Pandemonium - WGA14113.jpg",
       imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/John_Martin_-_Pandemonium_-_WGA14113.jpg?width=1280" },
     { name: "Titania Sleeping (Richard Dadd)",
       titles: ["Richard Dadd"],
-      imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Richard_Dadd_-_Titania_Sleeping.jpg?width=1024" },
+      commonsFile: "Titania Sleeping.jpg" },
     { name: "Hylas and the Nymphs (Waterhouse)",
       titles: ["Hylas and the Nymphs"],
+      commonsFile: "John William Waterhouse - Hylas and the Nymphs (1896).jpg",
       imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/John_William_Waterhouse_-_Hylas_and_the_Nymphs_(1896).jpg?width=1280" }
   ]
 },
