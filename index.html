@@ -26,7 +26,7 @@
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -78,8 +78,8 @@
   @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
   .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
   .list-tag{
-    font-family:'Fraunces',serif; font-size:11px; letter-spacing:.18em;
-    text-transform:uppercase; color:var(--accent); font-weight:600;
+    font-family:'Fraunces',serif; font-size:12px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--accent); font-weight:800;
   }
   .star{
     background:none;border:none;cursor:pointer;font-size:22px;line-height:1;
@@ -121,6 +121,19 @@
     border:1px solid var(--line);border-radius:2px;padding:2px 8px;cursor:pointer;color:var(--ink-soft);
   }
   .ex{font-style:italic;color:var(--ink-soft);}
+
+  /* ---- card thumbnail (small Wikipedia image, top-right of body) ---- */
+  .card-thumb{
+    float:right; width:96px; height:96px; margin:0 0 10px 14px;
+    border:1px solid var(--line); border-radius:2px;
+    object-fit:cover; background:var(--paper);
+    box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  @media (max-width: 380px){
+    .card-thumb{ width:76px; height:76px; margin:0 0 8px 10px; }
+  }
+  /* clear float at end of body so Tell-me-more sits below cleanly */
+  .card-body::after{ content:""; display:block; clear:both; }
 
   /* ---- reference banner (top of Today view) ---- */
   .ref-banner{
@@ -621,6 +634,15 @@ function cardEl(list,item,date){
 }
 
 /* ---- words ---- */
+/* Keep short usage phrases; drop long literary citations (which the Dictionary API
+   occasionally returns instead of a usage example). Heuristic: cap at 140 chars. */
+function goodExample(s){
+  if(!s) return false;
+  s = String(s).trim();
+  if(s.length > 140) return false;
+  return true;
+}
+
 async function fillWord(card,list,item,form){
   const body=card.querySelector('.card-body');
   const moreBtn=card.querySelector('.more-btn');
@@ -654,7 +676,7 @@ async function fillWord(card,list,item,form){
       html+='<p><span class="pos">'+esc(m0.partOfSpeech)+'</span></p>';
       m0.definitions.slice(0,2).forEach(d=>{
         html+='<p>'+esc(d.definition)+'</p>';
-        if(d.example) html+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
+        if(d.example && goodExample(d.example)) html+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
       });
     }
     body.innerHTML=html||'<p>Definition unavailable.</p>';
@@ -668,7 +690,7 @@ async function fillWord(card,list,item,form){
         more+='<p><span class="pos">'+esc(m.partOfSpeech)+'</span></p>';
         defs.slice(0,4).forEach(d=>{
           more+='<p>'+esc(d.definition)+'</p>';
-          if(d.example) more+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
+          if(d.example && goodExample(d.example)) more+='<p class="ex">\u201c'+esc(d.example)+'\u201d</p>';
         });
       }
     });
@@ -697,6 +719,25 @@ async function fillWiki(card,list,item){
       title:t, data:await fetchJSON(WIKI+encodeURIComponent(t.replace(/ /g,'_')),true)
     })));
     let html='',links=[];
+    /* Small thumbnail: only for single-article cards (not bundles), and only
+       when Wikipedia provides one. Floated top-right of the body so text wraps.
+       Prefer the original if it's an animated GIF (Wikipedia's thumbnailer
+       flattens GIFs to static JPEGs in `thumbnail.source`); otherwise use the
+       pre-sized thumbnail. */
+    let thumbUrl = '';
+    if(results.length===1 && results[0].data){
+      const d = results[0].data;
+      const orig = d.originalimage && d.originalimage.source;
+      const thumb = d.thumbnail && d.thumbnail.source;
+      if(orig && /\.gif($|\?)/i.test(orig)){
+        thumbUrl = orig;
+      } else if(thumb){
+        thumbUrl = thumb;
+      }
+    }
+    if(thumbUrl){
+      html += '<img class="card-thumb" src="'+esc(thumbUrl)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">';
+    }
     results.forEach(r=>{
       if(titles.length>1) html+='<p class="subhead">'+esc(r.data.title||r.title)+'</p>';
       if(r.data.__notfound||!r.data.extract){
@@ -1045,7 +1086,18 @@ function renderDay(app,date,isArchive){
 
   const entry=computeDay(date);
   let any=false;
+  /* Render Quotes card first (right after Reference banner), then everything else. */
+  const quotesList = LISTS.find(l=>l.id==='quotes');
+  if(quotesList){
+    for(const itemId of idsOf(entry,quotesList.id)){
+      const item=getItem(quotesList,itemId);
+      if(!item) continue;
+      app.appendChild(cardEl(quotesList,item,date));
+      any=true;
+    }
+  }
   for(const list of LISTS){
+    if(list.id==='quotes') continue;
     for(const itemId of idsOf(entry,list.id)){
       const item=getItem(list,itemId);
       if(!item) continue;
