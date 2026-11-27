@@ -909,7 +909,7 @@ function renderChessBoard(container, item){
       board=Chessboard(boardId, {
         position: fen,
         draggable: !!draggable,
-        pieceTheme: 'https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/img/chesspieces/wikipedia/{piece}.png',
+        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
         onDragStart: (src,piece)=>{
           if(game.game_over()) return false;
           if((game.turn()==='w' && piece.search(/^b/)===0) ||
@@ -1179,6 +1179,24 @@ function renderSettings(app){
     'The daily word count is the list\u2019s total turns divided by 365, rounded up (currently '+
     'two; capped at five as the list grows). Wiki lists draw one item a day.</div>';
   app.appendChild(s4);
+
+  /* hard refresh - force app code update */
+  const s4b=document.createElement('div');
+  s4b.className='set-sec';
+  s4b.innerHTML='<div class="set-h">Hard refresh</div>'+
+    '<div class="set-p">Forces the app to re-download the latest code from GitHub. '+
+    'Use after I update the engine and iOS is still serving the cached version. '+
+    'Keeps your history and favourites.</div>';
+  const hb=document.createElement('button');
+  hb.className='btn'; hb.textContent='Force app update';
+  hb.addEventListener('click',()=>{
+    /* Append a cache-busting query string and reload. iOS/Safari treats the
+       new URL as a fresh resource and refetches index.html and lists.js. */
+    const base = window.location.pathname;
+    window.location.replace(base + '?v=' + Date.now());
+  });
+  s4b.appendChild(hb);
+  app.appendChild(s4b);
 
   /* reset */
   const s5=document.createElement('div');
