@@ -124,22 +124,49 @@
 
   /* ---- reference banner (top of Today view) ---- */
   .ref-banner{
-    margin:0 0 16px; padding:9px 12px;
+    margin:0 0 16px; padding:10px 12px;
     background:var(--paper-card); border:1px solid var(--line); border-radius:2px;
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
     border-left:3px solid var(--accent-soft);
+    overflow:hidden;
   }
   .ref-banner-label{
     font-family:'Fraunces',serif; font-weight:500; font-size:13px;
     letter-spacing:.04em; color:var(--ink-soft); flex-shrink:0;
   }
   .ref-banner-formula{
-    overflow-x:auto; flex:1; min-width:0;
+    overflow-x:auto; flex:1 1 100%; min-width:0; max-width:100%;
+    -webkit-overflow-scrolling:touch;
+    padding:2px 0;
   }
-  .ref-banner-formula .katex{font-size:1em;}
+  .ref-banner-formula .katex{font-size:.95em; white-space:nowrap;}
   .ref-banner-value{
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
     font-size:13px; color:var(--ink);
+  }
+  /* on phone-portrait widths, stack label on top so the formula gets full width */
+  @media (max-width: 520px){
+    .ref-banner{ flex-direction:column; align-items:stretch; gap:6px; padding:9px 10px; }
+    .ref-banner-label{ font-size:12px; }
+  }
+
+  /* ---- pull-to-refresh indicator ---- */
+  .pull-indicator{
+    position:fixed; left:0; right:0; top:0;
+    display:flex; align-items:center; justify-content:center;
+    pointer-events:none; z-index:50;
+    font-family:'Fraunces',serif; font-size:13px; color:var(--ink-soft);
+    letter-spacing:.06em; text-transform:uppercase;
+    background:var(--paper);
+    transform:translateY(-100%);
+    transition:transform 0s;
+    will-change:transform,opacity;
+  }
+  .pull-indicator.spinning{
+    animation:pullspin 1.1s linear infinite;
+  }
+  @keyframes pullspin{
+    0%{opacity:.4;} 50%{opacity:1;} 100%{opacity:.4;}
   }
 
   /* ---- artworks ---- */
@@ -363,7 +390,11 @@ function loadState(){
   if(typeof state.seed!=='number') state.seed=Math.floor(Math.random()*4294967296);
   if(!Array.isArray(state.history)) state.history=[];
   if(!state.stars||typeof state.stars!=='object') state.stars={};
+  /* refreshCounts[date] bumps each time the user pull-refreshes, giving
+     deterministic-but-new selections for that date. */
+  if(!state.refreshCounts||typeof state.refreshCounts!=='object') state.refreshCounts={};
 }
+function refreshSalt(date){ return state.refreshCounts[date]||0; }
 function saveState(){ localStorage.setItem('dd_state',JSON.stringify(state)); }
 function starKey(listId,itemId){ return listId+'::'+itemId; }
 function isStarred(listId,itemId){ return !!state.stars[starKey(listId,itemId)]; }
@@ -428,7 +459,7 @@ function selectForList(list,date){
     if(diff>0&&diff<=cd){ idsOf(h,list.id).forEach(id=>recent.add(id)); }
   }
   const count=Math.min(dailyCount(list,date),S);
-  const rng=mulberry32(hashStr(state.seed+'|'+date+'|'+list.id));
+  const rng=mulberry32(hashStr(state.seed+'|'+date+'|'+list.id+'|'+refreshSalt(date)));
   const wf=it=>it.weight*(isStarred(list.id,it.id)?2:1);
   const info=list.type==='word'?wordCycleInfo(list,date):null;
   /* current-cycle weight: halves per draw this cycle; <1 means inactive */
@@ -878,7 +909,7 @@ function renderChessBoard(container, item){
       board=Chessboard(boardId, {
         position: fen,
         draggable: !!draggable,
-        pieceTheme: 'https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png',
+        pieceTheme: 'https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/img/chesspieces/wikipedia/{piece}.png',
         onDragStart: (src,piece)=>{
           if(game.game_over()) return false;
           if((game.turn()==='w' && piece.search(/^b/)===0) ||
@@ -1057,7 +1088,7 @@ function renderReferenceBanner(app, date){
      list per day, rotating deterministically. Not a card. */
   const ref = (window.APP_LISTS||[]).find(l=>l.id==='reference');
   if(!ref || !ref.items || ref.items.length===0) return;
-  const rng = mulberry32(hashStr(state.seed+'|'+date+'|reference'));
+  const rng = mulberry32(hashStr(state.seed+'|'+date+'|reference|'+refreshSalt(date)));
   const item = ref.items[Math.floor(rng()*ref.items.length)];
   const banner = document.createElement('div');
   banner.className='ref-banner';
@@ -1214,6 +1245,80 @@ window.addEventListener('focus',refreshIfNewDay);
 loadState();
 computeDay(todayStr());
 render();
+
+/* ---------- pull-to-refresh ----------
+   When the user drags the top of the page downward past a threshold, bump
+   today's refresh counter (which is mixed into the selection hash), wipe
+   today's cached entry, and re-render. Gives genuinely new picks for today
+   across every list and the Reference banner. Only fires on the Today view
+   and only when page is scrolled to the very top. */
+(function installPullToRefresh(){
+  const THRESHOLD = 70;          /* px user must drag down to trigger */
+  const MAX_PULL  = 120;          /* cap on visual translate */
+  const indicator = document.createElement('div');
+  indicator.className = 'pull-indicator';
+  indicator.style.height = '48px';
+  indicator.textContent = '↓  pull to refresh';
+  document.body.appendChild(indicator);
+
+  let startY = 0;
+  let pulling = false;
+  let currentPull = 0;
+
+  function atTop(){ return (window.scrollY||document.documentElement.scrollTop||0) <= 0; }
+
+  document.addEventListener('touchstart', (e)=>{
+    if(view!=='today') return;
+    if(!atTop()) return;
+    if(e.touches.length !== 1) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    currentPull = 0;
+    indicator.classList.remove('spinning');
+    indicator.textContent = '↓  pull to refresh';
+  }, {passive:true});
+
+  document.addEventListener('touchmove', (e)=>{
+    if(!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy <= 0){ pulling = false; indicator.style.transform='translateY(-100%)'; return; }
+    currentPull = Math.min(dy * 0.6, MAX_PULL);
+    const pct = Math.min(currentPull / THRESHOLD, 1);
+    indicator.style.transform = 'translateY(' + (currentPull - 48) + 'px)';
+    indicator.style.opacity = String(pct);
+    indicator.textContent = (currentPull >= THRESHOLD) ? '↑  release to refresh' : '↓  pull to refresh';
+  }, {passive:true});
+
+  document.addEventListener('touchend', ()=>{
+    if(!pulling) return;
+    pulling = false;
+    if(currentPull >= THRESHOLD){
+      /* trigger refresh */
+      indicator.style.transform = 'translateY(0px)';
+      indicator.classList.add('spinning');
+      indicator.textContent = 'refreshing…';
+      setTimeout(()=>{
+        const d = todayStr();
+        state.refreshCounts[d] = (state.refreshCounts[d]||0) + 1;
+        /* drop today's cached entry so computeDay recomputes */
+        state.history = state.history.filter(h => h.date !== d);
+        saveState();
+        computeDay(d);
+        render();
+        /* hide indicator */
+        setTimeout(()=>{
+          indicator.classList.remove('spinning');
+          indicator.style.transform = 'translateY(-100%)';
+          indicator.style.opacity = '0';
+        }, 180);
+      }, 90);
+    } else {
+      indicator.style.transform = 'translateY(-100%)';
+      indicator.style.opacity = '0';
+    }
+  });
+})();
+
 </script>
 </body>
 </html>
