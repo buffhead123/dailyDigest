@@ -41,6 +41,15 @@
     font-size:18px; line-height:1.55;
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     -webkit-font-smoothing:antialiased;
+    /* Classical laid-paper texture: faint vertical lines like old engraving
+       plates, with a subtle warm vignette. Barely visible but gives depth. */
+    background-color:var(--paper);
+    background-image:
+      repeating-linear-gradient(90deg,
+        transparent 0, transparent 3px,
+        rgba(90,81,66,.012) 3px, rgba(90,81,66,.012) 4px),
+      radial-gradient(ellipse at top, rgba(255,255,255,.4) 0%, transparent 60%);
+    background-attachment:fixed;
   }
   .wrap{max-width:660px;margin:0 auto;padding:22px 20px 80px;}
 
@@ -55,8 +64,16 @@
     line-height:1.04; letter-spacing:-.02em; margin:2px 0 4px;
   }
   .date-line{font-size:16px; color:var(--ink-soft); font-style:italic;}
-  .hr{height:2px;background:var(--ink);margin:14px 0 4px;}
-  .hr.thin{height:1px;background:var(--line);}
+  /* Fleuron divider: a centered classical ornament (diamond + leaf flourishes)
+     flanked by hairlines. Replaces the plain black bar. */
+  .hr{
+    height:22px; background:none; margin:14px 0 4px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22'><g fill='none' stroke='%23211c14' stroke-width='0.8'><line x1='0' y1='11' x2='155' y2='11'/><line x1='245' y1='11' x2='400' y2='11'/><path d='M 175 11 Q 190 3, 198 11 Q 190 19, 175 11 Z' fill='%23211c14'/><path d='M 225 11 Q 210 3, 202 11 Q 210 19, 225 11 Z' fill='%23211c14'/><circle cx='200' cy='11' r='2' fill='%23211c14'/></g></svg>");
+    background-repeat:no-repeat; background-position:center; background-size:100% 22px;
+  }
+  .hr.thin{
+    height:1px; background:var(--line); background-image:none;
+  }
 
   /* ---- nav ---- */
   nav{display:flex;gap:6px;margin:16px 0 22px;}
@@ -74,6 +91,26 @@
     border-radius:3px; padding:18px 18px 16px; margin-bottom:16px;
     box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 18px -14px rgba(0,0,0,.5);
     position:relative; animation:rise .4s ease both;
+  }
+  /* Classical corner brackets - small engraved L-brackets at each corner,
+     evoking an aldine/roman book plate frame. Low opacity + muted colour so
+     they read as 'pressed into the paper', not decoration layered on top. */
+  .card::before, .card::after{
+    content:''; position:absolute; width:18px; height:18px;
+    pointer-events:none; opacity:.55;
+    background-color:var(--ink-soft);
+    -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+    -webkit-mask-size:contain; mask-size:contain;
+  }
+  .card::before{
+    top:5px; left:5px;
+    -webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'><g fill='none' stroke='black' stroke-width='1'><path d='M 1 1 L 1 13 M 1 1 L 13 1'/><path d='M 4 4 L 4 10 M 4 4 L 10 4'/><circle cx='1' cy='1' r='1.2' fill='black'/></g></svg>");
+            mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'><g fill='none' stroke='black' stroke-width='1'><path d='M 1 1 L 1 13 M 1 1 L 13 1'/><path d='M 4 4 L 4 10 M 4 4 L 10 4'/><circle cx='1' cy='1' r='1.2' fill='black'/></g></svg>");
+  }
+  .card::after{
+    bottom:5px; right:5px;
+    -webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'><g fill='none' stroke='black' stroke-width='1'><path d='M 17 17 L 17 5 M 17 17 L 5 17'/><path d='M 14 14 L 14 8 M 14 14 L 8 14'/><circle cx='17' cy='17' r='1.2' fill='black'/></g></svg>");
+            mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'><g fill='none' stroke='black' stroke-width='1'><path d='M 17 17 L 17 5 M 17 17 L 5 17'/><path d='M 14 14 L 14 8 M 14 14 L 8 14'/><circle cx='17' cy='17' r='1.2' fill='black'/></g></svg>");
   }
   @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
   .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
