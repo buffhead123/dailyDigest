@@ -59,17 +59,36 @@
     --star:#c98a2e;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  html,body{background:var(--paper);}
+  html{background:var(--paper);}
   body{
     font-family:'Newsreader',Georgia,serif; color:var(--ink);
     font-size:18px; line-height:1.55;
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     -webkit-font-smoothing:antialiased;
-    /* Aged parchment: warm vignette + scattered 'foxing' spots + fine grain.
-       Multiple layered gradients simulate the character of old paper without
-       needing an image file. The spots are positioned deterministically so
-       they're subtle but organic - not a mechanical pattern. */
+    background:transparent;
+    position:relative;
+    min-height:100vh;
+  }
+  /* The actual artwork sits behind EVERYTHING as a fixed full-viewport
+     layer, filtered to sepia/muted so it feels like an aged engraving
+     rather than a photo, and heavily dimmed so it never competes with
+     the cards for attention. The paintings themselves rotate daily - a
+     JS hook (bgPainting) sets --bg-art to the chosen image's URL. */
+  body::before{
+    content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
     background-color:var(--paper);
+    background-image: var(--bg-art, none);
+    background-position:center center;
+    background-size:cover;
+    background-repeat:no-repeat;
+    opacity:1;
+    filter:sepia(55%) saturate(.65) contrast(.88) brightness(1.02);
+  }
+  /* Parchment veil + foxing + vignette + grain, all on a fixed overlay
+     so it stays put while the content scrolls. The veil tames the artwork
+     into a whisper; cards are opaque so they read as clearly as before. */
+  body::after{
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
     background-image:
       /* scattered foxing - amber spots suggesting age */
       radial-gradient(ellipse 60px 40px at 12% 8%,  rgba(150,100,55,.055) 0%, transparent 70%),
@@ -80,16 +99,18 @@
       radial-gradient(ellipse 35px 50px at 90% 90%, rgba(150,100,55,.04)  0%, transparent 70%),
       radial-gradient(ellipse 30px 30px at 50% 30%, rgba(140,90,50,.03)   0%, transparent 70%),
       radial-gradient(ellipse 40px 40px at 60% 72%, rgba(140,90,50,.035)  0%, transparent 70%),
+      /* edge vignette - darker at the margins, pulling the eye to centre */
+      radial-gradient(ellipse at center, transparent 35%, rgba(60,40,20,.18) 100%),
       /* warm centred glow */
-      radial-gradient(ellipse at 50% 20%, rgba(255,245,215,.35) 0%, transparent 55%),
-      /* subtle edge vignette - darker at the margins */
-      radial-gradient(ellipse at center, transparent 50%, rgba(90,60,35,.07) 100%),
+      radial-gradient(ellipse at 50% 20%, rgba(255,245,215,.25) 0%, transparent 55%),
       /* fine vertical laid-paper lines */
       repeating-linear-gradient(90deg,
         transparent 0, transparent 2px,
-        rgba(90,81,66,.02) 2px, rgba(90,81,66,.02) 3px);
-    background-attachment:fixed;
+        rgba(90,81,66,.02) 2px, rgba(90,81,66,.02) 3px),
+      /* heavy parchment veil - the layer that tames the painting */
+      linear-gradient(rgba(239,233,218,.78) 0%, rgba(239,233,218,.82) 100%);
     background-size:100% 100%;
+    background-repeat:no-repeat;
   }
   .wrap{max-width:660px;margin:0 auto;padding:22px 20px 80px;position:relative;}
   /* Decorative page ornaments: a flowing botanical fleuron at the very top
@@ -1591,6 +1612,56 @@ function openLightbox(src){
 loadState();
 computeDay(todayStr());
 render();
+
+/* ---- Daily background painting ----
+   A pool of atmospheric, public-domain artworks (Dadd, Martin, Fuseli,
+   Waterhouse etc). One is chosen per day deterministically from the date
+   hash, served from Wikimedia Commons via Special:FilePath so the URL
+   handles file renames. The painting sits behind the parchment veil
+   defined in body::before. */
+(function pickDailyBackground(){
+  /* Pool of paintings used as the day's background. Curated for a
+     Midsummer-Night's-Dream / pre-Raphaelite / classical-Roman register
+     - ethereal, romantic, dreamy. No horror / no funereal pieces. */
+  const paintings = [
+    /* Fairy / Shakespearean - the ethereal end */
+    {file:"Titania Sleeping.jpg",                                                     artist:"Richard Dadd"},
+    {file:"Richard Dadd - The Fairy Feller's Master-Stroke.jpg",                      artist:"Richard Dadd"},
+    {file:"Joseph Noel Paton - The Reconciliation of Titania and Oberon.jpg",         artist:"Joseph Noel Paton"},
+    {file:"Joseph Noel Paton - The Quarrel of Oberon and Titania - Google Art Project.jpg", artist:"Joseph Noel Paton"},
+    /* Pre-Raphaelite / dreamy */
+    {file:"John William Waterhouse - Hylas and the Nymphs (1896).jpg",                artist:"J W Waterhouse"},
+    {file:"John William Waterhouse - The Lady of Shalott - Google Art Project.jpg",   artist:"J W Waterhouse"},
+    {file:"John Everett Millais - Ophelia - Google Art Project.jpg",                  artist:"John Everett Millais"},
+    {file:"Edward Burne-Jones - The Golden Stairs - Google Art Project.jpg",          artist:"Edward Burne-Jones"},
+    /* Classical / Roman */
+    {file:"The Roses of Heliogabalus.jpg",                                            artist:"Alma-Tadema"},
+    {file:"Cole Thomas The Consummation The Course of the Empire 1836.jpg",           artist:"Thomas Cole"},
+    /* Romantic landscape - atmospheric balance */
+    {file:"Caspar David Friedrich - Wanderer above the Sea of Fog.jpeg",              artist:"C D Friedrich"}
+  ];
+  function urlFor(f){
+    return 'https://commons.wikimedia.org/wiki/Special:FilePath/' +
+           encodeURIComponent(f.replace(/ /g,'_')).replace(/'/g,'%27') +
+           '?width=1600';
+  }
+  /* deterministic pick per day */
+  const startIdx = Math.abs(hashStr(todayStr()+'|bgpaint')) % paintings.length;
+  /* try the day's pick first, then walk the list until one actually loads.
+     This insulates the background from any filename drift on Commons. */
+  function tryLoad(step){
+    if(step >= paintings.length) return; /* give up - cream wash alone */
+    const chosen = paintings[(startIdx+step) % paintings.length];
+    const url = urlFor(chosen.file);
+    const probe = new Image();
+    probe.onload = ()=>{
+      document.body.style.setProperty('--bg-art', 'url("'+url+'")');
+    };
+    probe.onerror = ()=>{ tryLoad(step+1); };
+    probe.src = url;
+  }
+  tryLoad(0);
+})();
 
 /* ---------- pull-to-refresh ----------
    When the user drags the top of the page downward past a threshold, bump
