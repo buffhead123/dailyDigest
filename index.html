@@ -128,12 +128,34 @@
     border:1px solid var(--line); border-radius:2px;
     object-fit:cover; background:var(--paper);
     box-shadow:0 1px 2px rgba(0,0,0,.08);
+    cursor:zoom-in;
   }
   @media (max-width: 380px){
     .card-thumb{ width:76px; height:76px; margin:0 0 8px 10px; }
   }
   /* clear float at end of body so Tell-me-more sits below cleanly */
   .card-body::after{ content:""; display:block; clear:both; }
+
+  /* ---- fullscreen image viewer (tap a thumbnail to expand) ---- */
+  .lightbox{
+    position:fixed; inset:0; background:rgba(0,0,0,.92);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; cursor:zoom-out;
+    padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    animation:fadeIn .18s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .lightbox img{
+    max-width:100%; max-height:100%; object-fit:contain;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+    background:#000;
+  }
+  .lightbox-close{
+    position:absolute; top:calc(env(safe-area-inset-top) + 12px); right:16px;
+    background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.3);
+    width:36px; height:36px; border-radius:50%; font-size:22px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
 
   /* ---- reference banner (top of Today view) ---- */
   .ref-banner{
@@ -191,6 +213,7 @@
   }
   .artwork-image img{
     max-width:100%; max-height:380px; height:auto; display:block;
+    cursor:zoom-in;
   }
   .artwork-caption{
     font-family:'Fraunces',serif; font-style:italic; font-size:15px;
@@ -300,7 +323,15 @@
 <input type="file" id="importer" accept="application/json" style="display:none">
 
 <!-- ============ DATA ============ -->
-<script src="lists.js"></script>
+<script>
+  /* Load lists.js with the same ?v= cache-buster as index.html so Hard refresh
+     actually forces a fresh download of the data file, not just the shell. */
+  (function(){
+    var v = new URLSearchParams(location.search).get('v') || '';
+    var q = v ? '?v=' + encodeURIComponent(v) : '';
+    document.write('<script src="lists.js' + q + '"><\/script>');
+  })();
+</script>
 
 <!-- ============ ENGINE ============ -->
 <script>
@@ -723,20 +754,22 @@ async function fillWiki(card,list,item){
        when Wikipedia provides one. Floated top-right of the body so text wraps.
        Prefer the original if it's an animated GIF (Wikipedia's thumbnailer
        flattens GIFs to static JPEGs in `thumbnail.source`); otherwise use the
-       pre-sized thumbnail. */
-    let thumbUrl = '';
+       pre-sized thumbnail. Tap-to-expand always uses the full-res original. */
+    let thumbUrl = '', fullUrl = '';
     if(results.length===1 && results[0].data){
       const d = results[0].data;
       const orig = d.originalimage && d.originalimage.source;
       const thumb = d.thumbnail && d.thumbnail.source;
       if(orig && /\.gif($|\?)/i.test(orig)){
-        thumbUrl = orig;
+        thumbUrl = orig; fullUrl = orig;
       } else if(thumb){
-        thumbUrl = thumb;
+        thumbUrl = thumb; fullUrl = orig || thumb;
       }
     }
     if(thumbUrl){
-      html += '<img class="card-thumb" src="'+esc(thumbUrl)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">';
+      html += '<img class="card-thumb" src="'+esc(thumbUrl)+'" '+
+              'data-full="'+esc(fullUrl)+'" '+
+              'alt="" referrerpolicy="no-referrer" onerror="this.remove()">';
     }
     results.forEach(r=>{
       if(titles.length>1) html+='<p class="subhead">'+esc(r.data.title||r.title)+'</p>';
@@ -1241,9 +1274,22 @@ function renderSettings(app){
     'Keeps your history and favourites.</div>';
   const hb=document.createElement('button');
   hb.className='btn'; hb.textContent='Force app update';
-  hb.addEventListener('click',()=>{
-    /* Append a cache-busting query string and reload. iOS/Safari treats the
-       new URL as a fresh resource and refetches index.html and lists.js. */
+  hb.addEventListener('click',async ()=>{
+    /* Aggressive refresh: clear any Cache Storage entries, unregister any
+       service workers (defensive - we don't ship one, but defense in depth),
+       then reload with a fresh ?v= timestamp. The lists.js loader above
+       inherits the same ?v=, so both files are re-fetched. */
+    hb.textContent='Refreshing…'; hb.disabled=true;
+    try{
+      if('caches' in window){
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k=>caches.delete(k)));
+      }
+      if('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(e){/* ignore - we still reload */}
     const base = window.location.pathname;
     window.location.replace(base + '?v=' + Date.now());
   });
@@ -1311,6 +1357,33 @@ function refreshIfNewDay(){
    would stay on screen until a manual reload */
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshIfNewDay(); });
 window.addEventListener('focus',refreshIfNewDay);
+
+/* ---- fullscreen image viewer: tap any card thumbnail to expand ---- */
+document.addEventListener('click',function(ev){
+  const thumb = ev.target.closest && ev.target.closest('.card-thumb');
+  if(thumb){
+    ev.preventDefault();
+    openLightbox(thumb.getAttribute('data-full') || thumb.src);
+    return;
+  }
+  /* artwork images - tap to view full-size */
+  const art = ev.target.closest && ev.target.closest('.artwork-image img');
+  if(art){
+    ev.preventDefault();
+    openLightbox(art.src);
+  }
+});
+function openLightbox(src){
+  const box = document.createElement('div');
+  box.className = 'lightbox';
+  box.innerHTML = '<button class="lightbox-close" aria-label="close">×</button>'+
+                  '<img src="'+src.replace(/"/g,'&quot;')+'" alt="">';
+  const close = ()=>{ if(box.parentNode) box.parentNode.removeChild(box); document.removeEventListener('keydown',onKey); };
+  const onKey = (e)=>{ if(e.key==='Escape') close(); };
+  box.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(box);
+}
 
 loadState();
 computeDay(todayStr());
